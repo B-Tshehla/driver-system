@@ -3,11 +3,77 @@
     <div class="auth-wrapper-home">
         <div class="auth-inner-home">
             <h3>home</h3>
-                <div v-if="qrText">
-                    <h3>{{qrText}}</h3>
+               
+                <div v-if="!isSelected">
+                  <form >
+                    <div class="form-group">
+                      <label for="exampleFormControlSelect1">Location of Departure:</label>
+                      <select class="form-control" v-model="select.depature" >
+                      <option value="" disabled selected>Select your option</option>
+                      <option v-for="Campus in Campuses" :key="Campus">{{Campus}}</option>
+                      </select>
+                    </div>
+                    
+                    <div class="form-group">
+                      <label for="exampleFormControlSelect1">Destination:</label>
+                      <select class="form-control" v-model="select.destination">
+                      <option value="" disabled selected>Select your option</option>
+                      <option v-for="Campus in Campuses" :key="Campus">{{Campus}}</option>
+                      </select>
+                    </div>
+                    <div class="form-group">
+                      <label for="exampleFormControlSelect1">Time of depature:</label>
+                      <select class="form-control" v-model="select.time" >
+                      <option value="" disabled selected>Select your option</option>
+                      <option v-for="time in times" :key="time">{{time}}</option>
+                      </select>
+                    </div>
+
+                    <div class="dataButton">
+                      <b-button variant="success" @click="selectedData">Next</b-button>
+                    </div>
+
+                  </form>
                 </div>
-                <div class="scanner" v-if="!qrText">
-                     <qrcode-stream @decode="decode" :track="drawOutline"/>
+
+
+               <div v-if="isSelected">
+                  <div class="scanner" v-if="!qrText">
+                      <qrcode-stream @decode="decode" :track="drawOutline"/>
+                  </div>
+                  <div v-if="qrText">
+                      <p>
+                        <b>Name:</b>
+                        {{fname}}</p>
+                      <p>
+                        <b>Surname:</b>
+                        {{lname}}</p>
+                      <p>
+                        <b>Studen Number:</b>
+                        {{studNum}}</p>
+
+                      <p>
+                        <b>Depature:</b>
+                        {{depature}}</p>
+                      <p>
+                        <b>Destination: </b>
+                        {{destination}}</p>
+                      <p>
+                        <b>Time: </b>
+                        {{time}}</p>
+                      <p>
+                        <b>Date: </b>
+                        {{date}}</p>
+                        
+                        <p>
+                          <b>
+                            {{access}}
+                          </b>
+                          </p>
+                        <div>
+                          <b-button variant="success" @click="next">Next</b-button>
+                        </div>
+                    </div>
                 </div>
                 
             
@@ -18,12 +84,31 @@
 </template>
 
 <script>
+import { doc, getDoc,getFirestore } from "firebase/firestore";
 import {QrcodeStream} from 'vue-qrcode-reader'
 export default {
     name:'home',
     data() {
         return {
-            qrText:null
+            qrText:null,
+            isSelected:false,
+             select:{
+                depature:null,
+                destination:null,
+                time:null,
+                date:null,
+              },
+              Campuses:['Arcadia','Ga-Rankua','Pretoria(Main)','Soshanguve(North)','Soshanguve(South)'],
+              times:["07:00","08:00","09:00","10:00","11:00","12:00","13:00","14:00",
+              "15:00","16:00","17:00","18:00","19:00","20:00","21:00"],
+              depature:null,
+              destination:null,
+              time:null,
+              date:null,
+              studNum:null,
+              fname:null,
+              lname:null,
+              access:null,
         }
     },
     components:{
@@ -32,6 +117,7 @@ export default {
     methods:{
         decode(decodeString){
             this.qrText=decodeString;
+            this.getStudentData();
         },
         drawOutline(detectedCodes,ctx){
             
@@ -50,9 +136,57 @@ export default {
         ctx.closePath();
         ctx.stroke();
       }
-    
-           
+         
+      },
+      
+      async getStudentData(){
+
+        const db=getFirestore();
+        const docRef = doc(db, "students", this.qrText);
+        const docSnap = await getDoc(docRef);
+
+        if (docSnap.exists()) {
+          console.log("Document data:", docSnap.data());
+          this.depature=docSnap.data().depature;
+          this.destination=docSnap.data().destination;
+          this.time=docSnap.data().time;
+          this.date=docSnap.data().date;
+          this.lname=docSnap.data().lname;
+          this.fname=docSnap.data().fname;
+          this.studNum=docSnap.data().studNum;
+
+          if(this.date==this.select.date){
+            this.access="Granted";
+          }
+          else{
+             this.access="Denied";
+          }
+
+          
+
+        } else {
+          // doc.data() will be undefined in this case
+          console.log("No such document!");
         }
+        },
+        next(){
+          this.qrText=null;
+        },
+        selectedData(){
+          var today = new Date();
+          var dd = today.getDate();
+          var mm = today.getMonth()+1; 
+          var yyyy = today.getFullYear();
+
+          this.select.date=dd+'/'+mm+'/'+yyyy;
+          this.isSelected=true;
+          
+          console.log(this.select.depature);
+          console.log(this.select.destination);
+          console.log(this.select.time);
+          console.log(this.select.date);
+        },
+
     }
 }
 </script>
@@ -130,4 +264,7 @@ export default {
     margin: auto;
 }
 
+.dataButton{
+  padding-top: 20px;
+  }
 </style>
